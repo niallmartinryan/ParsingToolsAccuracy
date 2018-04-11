@@ -123,7 +123,7 @@ cursor.each {|doc|
       #print parsedBibtex["author"] 
 
       newAuthor = testHash[:author]
-      puts "\n New AUTHOR??? : #{newAuthor}"
+      #puts "\n New AUTHOR??? : #{newAuthor}"
       notSame = false
       if !newAuthor.nil?
         if !newAuthor.kind_of?(Array)
@@ -154,9 +154,13 @@ cursor.each {|doc|
       newEditor = testHash[:editor]
       #print "newEditor :: #{newEditor}"
       if !newEditor.nil?
+        if newEditor.kind_of?(Array)
+          newSplitEditor = newEditor[0].split(/,|&/)
+        else
         newSplitEditor = newEditor.split(/,|&/)
         newSplitEditor.each do |edit|
           # print edit + "\n"
+        end
         end
       end
       newInstitution = testHash[:institution]
@@ -192,13 +196,14 @@ cursor.each {|doc|
 
       #abort("mwhah")
       # looks for any key containing author or editor..
-      bestPercent = 500.000
+      bestPercent = 1000.000
+      bestPercent1 = 1000.000
       currentPercent = 0.000
       count =0
       totalPercentage = 0.000
       totalTitle = 0.000
       #total
-      
+      editorStringToStore = 0.000 
       keys.each do |key|
         #print key
         if key == "citation" 
@@ -225,24 +230,131 @@ cursor.each {|doc|
           end
         end
         if (key == "editor") && (!parsed[key].nil?) && (!newEditor.nil?)
-          accuracy = true
-          i=0
-          print newSplitEditor
-          newSplitEditor.each do |auth|
-            fullAuthString = parsed[key]
-            if auth.include? "#{fullAuthString[i][:family]} #{fullAuthString[i][:given]}"
+          #accuracy = true
+          #i=0
+          #print newSplitEditor
+        
+         accuracy = true
+          i= 0
+          puts "#{newEditor} : new Author "
+          #puts "#{newSplitAuthor} : newSplitAuthor"
+          puts "#{parsed["editor"]}: parsed[key]"
+          #puts "#{newSplitAuthor.length} == #{parsed[key].length} "
+          percent = 0.0000
+          finalPercentage = 0.000
+          #puts "best percent :#{bestPercent}"
+          if (!newSplitEditor.nil?) &&(newSplitEditor.length == parsed["editor"].length)
+            #print "THEY WERE EQUALLL\n"
+            #finalPercentage = 0.000
+            newSplitEditor.each do |auth|
+              fullAuthString = parsed["editor"]
+              #puts fullAuthString
+              #puts "#{fullAuthString[i]} + #{i}"
+              #print fullAuthString[i]
+              #puts "#{auth} + #{i}"
+              #puts "\n#{auth} == #{fullAuthString[i]["family"]} #{fullAuthString[i]["given"]}"
+              fullAuthFinalString = "#{fullAuthString[i]["family"]} #{fullAuthString[i]["given"]}"
+              #puts "OMG" 
+              #puts distance_percent(fullAuthFinalString,auth)
+              percent1 = distance_percent(fullAuthFinalString, auth)
+              editDistance = levenshtein_distance(fullAuthFinalString,auth)
+              #puts "EDIT DISTANCE = #{editDistance}"
+              #percent1 = 0.000
 
-            else
-              accuracy = false
+              # use variables instead of calculating multiple times
+              #puts auth.length
+              #puts fullAuthFinalString.length
+              if auth.length > fullAuthFinalString.length
+                #percent1 = (auth.length.to_f-editDistance.to_f) / auth.length.to_f
+              else
+                #percent1 = (fullAuthFinalString.length.to_f - editDistance.to_f) / fullAuthFinalString.length.to_f
+              end
+              #puts "PERCENT == %.4f" % [percent1] 
+              percent = percent + percent1
+              if (auth.include? "#{fullAuthString[i]["family"]} #{fullAuthString[i]["given"]}")
+               print "Found correct Author"
+              else
+                accuracy = false
+              end
+              i = i+1
             end
-            i = i+1
-          end
-          if accuracy == true
-            accuracyForEditor = "1"
+            #puts "final percentage %.4f " % [percent/newSplitAuthor.length]
+           #puts "bestpercent %.4f " % [bestPercent] 
+            finalPercent = percent/newSplitEditor.length.to_f 
+            if finalPercent < bestPercent
+              bestPercent1 = finalPercent
+            end
+              #f.print "{author}#{finalPercentage/newSplitAuthor.length.to_f}	"
+            #  Compare not equal lengths with family and given on different
+            #  iterations
+          elsif (key.include? "editor") && (!parsed[key].nil?) && (!newSplitAuthor.nil?) 
+            i =0
+            j =0
+            percent = 0.0000
+            percent1 = 0.0000
+            print "newSplitAuthor :: #{newSplitEditor}"
+            newSplitEditor.each do |auth|
+              
+              fullAuthString = parsed[key]
+              if fullAuthString[i].nil?
+                percent1 = 1.00
+              else
+              if j ==0
+                finalAuthString = fullAuthString[i]["family"]
+                j=1
+              else
+                finalAuthString = fullAuthString[i]["given"]
+                j =0
+                i = i+1
+              end  
+              percent1 = distance_percent(finalAuthString,auth)
+              editDistance = levenshtein_distance(finalAuthString, auth)
+              percent = percent + percent1 
+            end
+            end
+            finalpercent = percent/newSplitEditor.length.to_f
+            if finalpercent < bestPercent
+                bestPercent1 = finalpercent
+            end
           else
-            accuracyForEditor = "0"
-          end 
-        end
+            f.print "-\t"
+          end
+          #puts "{author} #{finalpercent}"
+          #puts "bestpercent : #{bestPercent1}"
+          editorStringToStore = bestPercent1
+          totalPercentage = totalPercentage + bestPercent1
+          count = count +1
+          #f.print "{author}#{finalpercent}	"
+          if accuracy == true
+            #print "all authors were correct\n"
+            #f.print "1" + "	"
+          else
+            #f.print "0"+ "	"
+          end
+        else 
+          #f.print "{author}-	"
+        end 
+      
+ 
+
+          
+    
+          
+          #newSplitEditor.each do |auth|
+          #  fullAuthString = parsed[key]
+          #  if auth.include? "#{fullAuthString[i][:family]} #{fullAuthString[i][:given]}"
+
+          #  else
+          #    accuracy = false
+          #  end
+          #  i = i+1
+          #end
+          #if accuracy == true
+          #  accuracyForEditor = "1"
+          #else
+          #  accuracyForEditor = "0"
+          #end 
+        #end
          
         
         if (key.include? "author") && (!parsed[key].nil?) && (notSame == false)    
@@ -254,7 +366,7 @@ cursor.each {|doc|
           #puts "#{newSplitAuthor.length} == #{parsed[key].length} "
           percent = 0.0000
           finalPercentage = 0.000
-          puts "best percent :#{bestPercent}"
+          #puts "best percent :#{bestPercent}"
           if (!newSplitAuthor.nil?) &&(newSplitAuthor.length == parsed[key].length)
             #print "THEY WERE EQUALLL\n"
             #finalPercentage = 0.000
@@ -284,7 +396,7 @@ cursor.each {|doc|
               #puts "PERCENT == %.4f" % [percent1] 
               percent = percent + percent1
               if (auth.include? "#{fullAuthString[i]["family"]} #{fullAuthString[i]["given"]}")
-                #print "Found correct Author"
+               print "Found correct Author"
               else
                 accuracy = false
               end
@@ -299,13 +411,18 @@ cursor.each {|doc|
               #f.print "{author}#{finalPercentage/newSplitAuthor.length.to_f}	"
             #  Compare not equal lengths with family and given on different
             #  iterations
-          elsif (key.include? "author") && (!parsed[key].nil?) 
+          elsif (key.include? "author") && (!parsed[key].nil?) && (!newSplitAuthor.nil?) 
             i =0
             j =0
             percent = 0.0000
             percent1 = 0.0000
+            print "newSplitAuthor :: #{newSplitAuthor}"
             newSplitAuthor.each do |auth|
+              
               fullAuthString = parsed[key]
+              if fullAuthString[i].nil?
+                percent1 = 1.00
+              else
               if j ==0
                 finalAuthString = fullAuthString[i]["family"]
                 j=1
@@ -318,33 +435,35 @@ cursor.each {|doc|
               #puts "percent1 = #{percent1}" 
               editDistance = levenshtein_distance(finalAuthString, auth)
              # puts "Edit distance = %.4f" % [editDistance]
-              if editDistance == 0
+              #if editDistance == 0
                 #puts "iT WAS EXACT"
-                percent1 = 0.00
-              else
+               # percent1 = 0.00
+              #else
                # puts " auth.length = %f" % [auth.length]
                # puts "finalAuthString = %f" % [finalAuthString.length]
                # puts "auth = %s" % [auth]
                # puts "finalAuth = %s" % [finalAuthString]
-                if auth.length > finalAuthString.length
+               # if auth.length > finalAuthString.length
                   #percent1 = (auth.length.to_f-editDistance.to_f)/ auth.length.to_f
-                else
+                #else
                   #percent1 = (finalAuthString.length.to_f - editDistance.to_f)/ finalAuthString.length.to_f
-                end
-              end
+                #end
+              #end
               percent = percent + percent1 
               #puts "percent == %.4f" % [percent]
               #accuracy =false
-
+            end
             end
             finalpercent = percent/newSplitAuthor.length.to_f
             #puts "finalPercent = %.4f" % [finalpercent]
             if finalpercent < bestPercent
                 bestPercent = finalpercent
             end
+          else
+            f.print "-\t"
           end
           #puts "{author} #{finalpercent}"
-          puts "bestpercent : #{bestPercent}"
+          #puts "bestpercent : #{bestPercent}"
           f.print "#{bestPercent}\t"
           totalPercentage = totalPercentage + bestPercent
           count = count +1
@@ -382,7 +501,7 @@ cursor.each {|doc|
              else
                percentTitle = distance_percent(parsed["title"], newBookTitle)
              end
-              puts "percentTitle :: #{percentTitle}"
+              #puts "percentTitle :: #{percentTitle}"
           
           elsif   (!parsed["collectionTitle"].nil?) 
              if newBookTitle.kind_of?(Array)
@@ -390,12 +509,12 @@ cursor.each {|doc|
              else
               percentCollTitle = distance_percent(parsed["collectionTitle"], newBookTitle)  
              end  
-            puts "percentCollTitle :: #{percentCollTitle}"
+            #puts "percentCollTitle :: #{percentCollTitle}"
              
           end
           # weird sign magic 
           finalPercent = if percentTitle > percentCollTitle then percentTitle else percentCollTitle end
-          puts "finalPercent :: #{finalPercent}"
+          #puts "finalPercent :: #{finalPercent}"
           if finalPercent == base
             f.print "-\t"
           else
@@ -406,7 +525,7 @@ cursor.each {|doc|
         if newBookTitle.kind_of?(Array)
           #f.print "{booktitle}0.000	"
           puts "\n#{parsed["title"]} == #{newBookTitle}\n"
-          puts "\n#{parsed["collectionTitle"]}\n"
+          #puts "\n#{parsed["collectionTitle"]}\n"
         elsif parsed["title"].include? newBookTitle
           print "booktitle was correct"
           #f.print "1" + "	"
@@ -423,7 +542,7 @@ cursor.each {|doc|
       if !newContainer.nil?
 
         percentContainer =  distance_percent(parsed["containerTitle"],newContainter)  
-        puts percentContainer
+        #puts percentContainer
         f.print "#{percentContainer}\t"
         totalPercentage = totalPercentage + percentContainer
         count = count +1
@@ -437,7 +556,7 @@ cursor.each {|doc|
         print "container"
       else
         f.print "-\t"
-        puts "no container - give it a dash"
+        #puts "no container - give it a dash"
       end
 
       if !newDate.nil?
@@ -453,9 +572,9 @@ cursor.each {|doc|
         #puts newDate
         if newDate.kind_of?(Array)
           newDate = newDate[0].gsub(".", "")  
-          newDate = newDate[0].gsub("(", "")
-          newDate = newDate[0].gsub(")", "")
-          newDate = newDate[0].gsub(",", "")
+          newDate = newDate.gsub("(", "")
+          newDate = newDate.gsub(")", "")
+          newDate = newDate.gsub(",", "")
         else  
           newDate = newDate.gsub(".", "")
           newDate = newDate.gsub("(", "")
@@ -471,16 +590,26 @@ cursor.each {|doc|
         puts "#{datePartEvent} == #{newDate}\n"
         if datePartEvent[0][0].to_s.include? newDate
           f.print "0.000\t"
-          puts "0.0000%"
+          #puts "0.0000%"
           count = count + 1
         elsif datePartIssued[0][0].to_s.include? newDate
           f.print "0.000\t"
-          puts "0.0000%"
+          #puts "0.0000%"
          count = count + 1 
         else
-          puts "1.0000%"
-          f.print "1.000\t"
-          totalPercentage = totalPercentage + 1.000
+          #puts "100.0000%"
+          percentDate = distance_percent(datePartEvent[0][0].to_s, newDate)
+          percentDateIssued = distance_percent(datePartIssued[0][0].to_s, newDate)
+
+          if percentDate > percentDateIssued
+             totalPercentage = totalPercentage + percentDateIssued
+            f.print "#{percentDateIssued}\t"
+          else
+             totalPercentage = totalPercentage + percentDate
+            f.print "#{percentDate}\t"
+          end
+          #f.print "100.000\t"
+          
           count = count + 1
         end 
       else
@@ -494,17 +623,22 @@ cursor.each {|doc|
         parsedDoi = parsed["DOI"]
         if !parsedDoi.nil?
           #f.print "2	"
+          if newDoi.kind_of?(Array)
+          percentDOI = distance_percent(parsedDoi, newDoi[1])  
+          else
           percentDOI = distance_percent(parsedDoi,newDoi)
+          end
           totalPercentage = totalPercentage + percentDOI
-          puts percentDOI
+          #puts percentDOI
           f.print "#{percentDOI}\t"
           count = count +1
           puts "#{parsedDoi} == #{newDoi}\n"  
-          if parsedDoi.include? newDoi
+          #if parsedDoi.include? newDoi
             #f.print "1	"
-          else 
+          #else 
             #f.print "0	"
-          end
+          
+          #end
         else
           f.print "-\t"
         end
@@ -537,14 +671,16 @@ cursor.each {|doc|
 
       if !newEditor.nil?
         print "editor"
-        if accuracyForEditor == "1"
-          f.print "0.0000\t"
+        if !editorStringToStore == 0.000
+          #f.print "0.0000\t"
+          f.print "#{editorStringToStore}\t"
+          totalPercentage = totalPercentage + editorStringToStore 
           count = count + 1
           #f.print "1	"
-        elsif
-          f.print "1.0000\t"
-          totalPercentage = totalPercentage + 1.000
-          count = count + 1
+        else
+          f.print "-\t"
+          #totalPercentage = totalPercentage
+          #count = count + 1
         end
       else
         f.print "-\t"
@@ -563,29 +699,36 @@ cursor.each {|doc|
         puts parsedCollectionTitle 
         if (!parsedContainerTitle.nil?)# || (!parsedCollectionTitle.nil?)
           puts "#{parsedContainerTitle} == #{newJournal}\n"
-          percentJournal = distance_percent(parsedContainerTitle,newJournal)
-           
-          if (parsedContainerTitle.include? newJournal)
-            #f.print "1	"
-          elsif (parsedCollectionTitle.include? newJournal)
-            #f.print "1	"
+          if newJournal.kind_of?(Array)
+            percentJournal = distance_percent(parsedContainerTitle, newJournal[0])
           else
-            #f.print "0	"
+          percentJournal = distance_percent(parsedContainerTitle,newJournal)
           end
+          #if (parsedContainerTitle.include? newJournal)
+            #f.print "1	"
+          #elsif (parsedCollectionTitle.include? newJournal)
+            #f.print "1	"
+          #else
+            #f.print "0	"
+          #end
         end
         if !parsedCollectionTitle.nil?
+          if newJournal.kind_of?(Array)
+            percentJournal1 = distance_percent(parsedCollectionTitle, newJournal[0])
+          else
           percentJournal1 = distance_percent(parsedCollectionTitle, newJournal)
+          end
           puts percentJournal1 
           #f.print "2	"
         end
         if (parsedCollectionTitle.nil?) && (parsedContainerTitle.nil?)
          
           f.print "-\t"
-          elsif percentJournal < percentJournal1 
+        elsif percentJournal < percentJournal1 
             f.print "#{percentJournal}\t"
             totalPercentage = totalPercentage + percentJournal
             count = count + 1
-          else
+        else
             f.print "#{percentJournal1}\t"
              totalPercentage = totalPercentage + percentJournal1
                count = count +1
@@ -607,16 +750,24 @@ cursor.each {|doc|
         #
 
         if (!parsedTitle.nil?) #&& newLocation.kind_of?(String) && (parsedTitle.include? newLocation)
+          if newLocation.kind_of?(Array)
+            percentLocationTit = distance_percent(parsedTitle,newLocation[0])
+          else
           percentLocationTit = distance_percent(parsedTitle, newLocation) 
-          puts percentLocationTit
+          end
+          #puts percentLocationTit
           print "It was in the title"
           # may need to change this to a 1
           #f.print "2	"
           break
         end
         if (!parsedArchiveLocation.nil?)#&&(parsedArchiveLocation.include? newLocation)
-          percentLocationLoc = distance_percent(parsedArchiveLocation, newLocation)
-          puts percentLocationLoc
+          if newLocation.kind_of(Array)
+            percentLocationLoc = distance_percent(parsedArchiveLocation, newLocation[0])
+          else
+            percentLocationLoc = distance_percent(parsedArchiveLocation, newLocation)
+          end
+            #puts percentLocationLoc
           print "It was in the archive"
 
           #f.print "1	"
@@ -647,29 +798,33 @@ cursor.each {|doc|
       if !newPages.nil?
         print "pages"
         if !parsed["page"].nil?
-
-          percentPage = distance_percent(parsed["page"],newPages )
-          puts percentPage
-          f.print "#{percentPage}\t"
-           totalPercentage = totalPercentage + percentPage 
-          count = count +1
-          pageTest =  parsed["page"].split(/-/)
-          print newPages
-          check = true
-
-          pageTest.each do |page|
-            puts "#{newPages} == #{page}\n"
-            if(!newPages.include? page)
-              check =false
-            end
-          end
-
-          if(check ==true) 
-            print "pages was correct"
-            #f.print "1	"
+          if newPages.kind_of?(Array)
+            percentPage = distance_percent(parsed["page"], newPages[1])
           else
-            #f.print "0	"
+            percentPage = distance_percent(parsed["page"],newPages )
           end
+          #puts percentPage
+          f.print "#{percentPage}\t"
+          totalPercentage = totalPercentage + percentPage 
+          count = count +1
+          
+          #pageTest =  parsed["page"].split(/-/)
+          #print newPages
+          #check = true
+
+          #pageTest.each do |page|
+          #  puts "#{newPages} == #{page}\n"
+          #  if(!newPages.include? page)
+          #    check =false
+          #  end
+          #end
+
+          #if(check ==true) 
+          #  print "pages was correct"
+            #f.print "1	"
+          #else
+            #f.print "0	"
+          #end
         end
         f.print "-\t"
       else
@@ -681,8 +836,12 @@ cursor.each {|doc|
         parsedPublisher = parsed["publisher"]
 
         if !parsedPublisher.nil?
+          if newPublisher.kind_of?(Array)
+            percentPub = distance_percent(parsedPublisher, newPublisher[1])
+          else
           percentPub = distance_percent(parsedPublisher, newPublisher)
-          puts percentPub
+          end
+          #puts percentPub
           f.print "#{percentPub}\t"
            totalPercentage = totalPercentage + percentPub 
           count = count + 1
@@ -703,11 +862,20 @@ cursor.each {|doc|
         parsedTitle = parsed["title"]
         
         if !parsedTitle.nil?
-          percentTitle = distance_percent(parsedTitle, newTitle)
-          puts "\nTITLE PERCENT :: #{percentTitle}\n"
-          f.print "#{percentTitle}\t"
-           totalPercentage = totalPercentage + percentTitle 
-          count = count + 1
+          
+          if newTitle.kind_of?(Array)
+            percentTitle = distance_percent(parsedTitle, newTitle[0])
+            #puts "\n title percent :: #{percentTitle}\n"
+            f.print "#{percentTitle}\t"
+            totalPercentage = totalPercentage + percentTitle
+            count = count +1
+          else
+            percentTitle = distance_percent(parsedTitle, newTitle)
+            #puts "\nTITLE PERCENT :: #{percentTitle}\n"
+            f.print "#{percentTitle}\t"
+            totalPercentage = totalPercentage + percentTitle 
+            count = count + 1
+          end
         else
           f.print "-\t"
         end
@@ -723,7 +891,7 @@ cursor.each {|doc|
          
           count = count + 1 
         elsif accuracyForTrans == "0"
-          f.print "1.000\t"
+          f.print "100.000\t"
            totalPercentage = totalPercentage + 1.000 
           count = count + 1
         end    
@@ -733,8 +901,9 @@ cursor.each {|doc|
       if !newUrl.nil?
         parsedUrl = parsed["Url"]
         if  !parsedUrl.nil?
+          puts "URL"
           percentURL = distance_percent(parsedUrl, newUrl)
-          puts percentURL
+          #puts percentURL
           f.print "#{percentURL}\t"
            totalPercentage = totalPercentage + percentURL 
           count = count + 1
@@ -753,20 +922,27 @@ cursor.each {|doc|
       if !newVolume.nil?
         parsedVolume = parsed["volume"]
         if !parsedVolume.nil?
+          puts "Volume"
+          if newVolume.kind_of?(Array)
+            percentVol = distance_percent(parsedVolume, newVolume[1])
+            ## OR just give it the full 1
+            # OR join the array concat and then distance_percent
+          else
           percentVol = distance_percent(parsedVolume, newVolume)
-          puts percentVol
+          end
+          #puts percentVol
           f.print "#{percentVol}\t"
            totalPercentage = totalPercentage + percentVol 
           count = count + 1
           puts "#{parsedVolume} == #{newVolume}"
-          if parsedVolume.include? newVolume
+          #if parsedVolume.include? newVolume
             #f.print "1	"
-          else
+          #else
             #f.print "0	"
-          end
+          #end
         else
           f.print "-\t"
-          puts "volume was empty for original"
+          #puts "volume was empty for original"
         end
       else
         f.print "-\t"
@@ -791,7 +967,7 @@ cursor.each {|doc|
       #  f.print citation["annotatedBib"] + "\n"
       #}
 
-      gets
+      #gets
     end
 
   }
